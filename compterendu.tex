@@ -1,0 +1,242 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}  % à garder si tu compiles avec pdflatex
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{abstract}
+\usepackage{titling}
+\geometry{margin=2.5cm}
+
+\lstset{
+    language=C++,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{orange},
+    showstringspaces=false,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    numbersep=5pt,
+    breaklines=true,
+    breakatwhitespace=true,
+    columns=fullflexible,
+    inputencoding=utf8,
+    literate=
+      {é}{{\'e}}1 {è}{{\`e}}1 {ê}{{\^e}}1 {ë}{{\"e}}1
+      {à}{{\`a}}1 {â}{{\^a}}1 {ä}{{\"a}}1
+      {ù}{{\`u}}1 {û}{{\^u}}1 {ü}{{\"u}}1
+      {ô}{{\^o}}1 {ö}{{\"o}}1 {î}{{\^i}}1 {ï}{{\"i}}1
+      {ç}{{\c{c}}}1
+      {É}{{\'E}}1 {È}{{\`E}}1 {Ê}{{\^E}}1 {Ë}{{\"E}}1
+}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{\fill}
+
+    {\Huge \bfseries Compte Rendu de Projet \\[0.5em]
+    Simulation de Bateau en C++}
+
+    \vspace{2cm}
+    {\Large RULLAC Éloïse, FAUCON Léo \par}
+    {\large Université de Toulon \par}
+    {\large UE622 - Programmation Orientée Objet \par}
+    \vspace{1.5cm}
+    {\large \today}
+
+    \vspace*{\fill}
+\end{titlepage}
+
+\section{Introduction}
+Le projet consistait à simuler une course de bateau via la bibliothèque SFML et libphysics (bibliothèque locale au module UE622). Ce travail s'inscrit dans le cadre de l'UE622 à l'Université de Toulon. L'objectif pédagogique principal est l'application des notions de POO en C++.
+
+\section {Fonctionnalitées}
+Avec ses menus, ses bateaux aussi customisables que notre concurrent officiel Sea of Thieves et
+son réalisme à couper le souffle, notre projet va changer votre vision du jeu vidéo maritime.
+Notre projet est donc : 
+\begin{itemize}
+    \item Jouable de 0 (oui 0) à 4.
+    \item Doté de bot.
+    \item Pas réaliste, car les calculs sont fait par nous-même,
+     sans l'aide de la bibliothèque libphysics.
+    Par exemple il est possible de faire un dash (c'est volontaire)
+    via la pression simultanée de la touche "avancer" et "reculer",
+    l'accélération du bateau va s'accumuler,
+    et lors du relâchement de la touche "reculer", le bateau profiterai alors du boost accumulé.
+\end{itemize}
+
+Il possède :
+\begin{itemize}
+    \item \texttt{Un écran de début} où est possible:
+    \begin{itemize}
+        \item L'ajout de bateaux (bot ou joueur).
+        \item La configuration de ces bateaux (taille, couleur).
+    \end{itemize}
+
+    \item \texttt{Un écran de fin} où le choix de recommencer est permis (via un bouton ou la touche espace).
+    \item \texttt{La possibilité de tirer des boulets de canon}:
+    si beau que cela puisse paraître la hitbox est honteusement gérée.
+    La bibliothèque SFML offre la possibilité de vérifier si deux sf::Shape
+    s'intersectent via la méthode :
+    \[
+    \texttt{sf::FloatRect::intersects(sf::FloatRect)}
+    \]
+    Or comme cela semble être intuitif dans le nom,
+    cette méthode gère uniquement les intersections des rectangles.
+    Et par nous ne savons quelle magie,
+    il est possible de récupérer un \texttt{sf::FloatRect} via
+    \texttt{sf::Shape::getGlobalBounds()} donc avec des formes complexes du genre 
+    \texttt{CircleShape}, \texttt{ConvexShape}, ..., mais est terrible. C'est ainsi pourquoi nous avons dû
+    faire tirer les boulets bien plus loin pour éviter que les bateaux n'explosent de leur propres tirs.
+\end{itemize}
+
+\section{Structuration du code}
+\subsection{POO}
+Le projet est composé de plusieurs classes :
+\begin{itemize}
+    \item \textbf{Boutons} :
+    \begin{itemize}
+        \item \texttt{BareButton} : bouton sans texte, juste un rectangle
+        \item \texttt{Button} : bouton classique avec texte, hérite de \texttt{BareButton}
+        \item \texttt{RadioButtonG\textless int nb\_button, typename ButtonT, typename ValueT\textgreater} : système de boutons radio configurable par template
+        \item \texttt{RadioButton\textless int nb\_button, typename ValueT\textgreater} : bouton radio classique, hérite de \texttt{RadioButtonG\textless int nb\_button, Button, ValueT\textgreater}
+    \end{itemize}
+    
+    \item \textbf{Éléments de jeu} :
+    \begin{itemize}
+        \item \texttt{Entity\textless typename T\textgreater} : Concept global d'une entité, hérite de \texttt{sf::Drawable}
+        \item \texttt{Obstacle} : obstacle fixe sur le parcours, hérite de \texttt{Entity\textless sf::RectangleShape\textgreater}
+        \item \texttt{Cannonball} : projectile tiré par les bateaux, hérite de \texttt{Entity\textless sf::CircleShape\textgreater}
+        \item \texttt{FinishLine} : ligne d'arrivée, hérite de \texttt{Entity\textless sf::RectangleShape\textgreater}
+        \item \texttt{Screamer} : effet visuel et sonore lancé lors de la destruction d'un bateau, hérite de \texttt{sf::Drawable}
+    \end{itemize}
+    
+    \item \textbf{Bateaux} :
+    \begin{itemize}
+        \item \texttt{Boat} : bateau générique, hérite de \texttt{Entity\textless sf::ConvexShape\textgreater}
+        \item \texttt{BoatAI} : bateau contrôlé par une IA, hérite de \texttt{Boat}
+        \item \texttt{BoatPlayer} : bateau contrôlé par un joueur, hérite de \texttt{Boat}
+    \end{itemize}
+    
+    \item \textbf{Interface} :
+    \begin{itemize}
+        \item \texttt{StartScreen} : écran d'accueil du jeu, hérite de \texttt{sf::Drawable}
+        \item \texttt{EndScreen} : écran de fin de partie, hérite de \texttt{sf::Drawable}
+        \item \texttt{BoatOption} : options de configuration d'un bateau, hérite de \texttt{sf::Drawable}
+        \item \texttt{Players} : gestion de tous les joueurs (humains ou IA)
+        \item \texttt{Game} : classe principale gérant la boucle du jeu
+    \end{itemize}
+\end{itemize}
+
+\subsection{Architecture du Projet}
+Pour ce projet, nous avons décidé que toutes les entitées ne seraient constituées que d'une forme, ou \texttt{sf::Shape}, ainsi, la détection de collision via SFML est aisement vérifiée via le code suivant dans la classe \texttt{Entity} :
+
+\begin{lstlisting}
+// T doit hériter de sf::Shape
+template <typename T>
+class Entity: public sf::Drawable {
+public:
+    template <typename U>
+    inline bool hasCrossed(const Entity<U>& e) const
+    {
+        return shape.getGlobalBounds().intersects(e.get_shape().getGlobalBounds());
+    }
+    (...)
+protected:
+    T shape;
+};
+\end{lstlisting}
+Le code est évidemment sectionné, symbolisé par le "(...)", où sont les méthodes basiques, tirées de celles de sf::Shape, du genre setPosition, setSize, ...
+
+\section {Les difficultées et solutions}
+Nous avons rencontré plusieurs difficultées lors de la conception du projet.
+\subsection{Le polymorphisme}
+    Ce concept de POO a été central dans notre projet.
+    Nous l'avons modularisé au maximum,
+    jusqu'à créer le concept entier d'un radiobutton en classe pour
+    deux pauvres instances.
+\subsection{La gestion des instances temporaires de classes}
+    Celle-ci est un peu plus compliqué à expliquer. Nous sommes passés par plusieurs méthodes.
+\subsubsection{La méthode ObstacleVect}
+Pour la première méthode, nous avons fait une liste basique de boulets, via la classe
+\texttt{ObstacleVect} qui hérite de \texttt{std::vect\textless Obstacle\textgreater}
+et gère les instances des obstacles avec les méthodes \texttt{inst} et \texttt{reset}. 
+\subsubsection{La méthode Cannonball}
+Pour la deuxième méthodes, nous voulions tenter un système plus performant. Donc nous avons fait ceci :
+    \begin{lstlisting}
+class Cannonball: public Entity<sf::CircleShape> {
+private:
+    Cannonball(const sf::Vector2f& starting_pos, const sf::Vector2f& pdirection);
+
+    (...)
+
+public:
+    static std::vector<std::shared_ptr<Cannonball>> all;
+    Cannonball() = delete;
+    Cannonball(const Cannonball&) = delete;
+    Cannonball& operator=(const Cannonball&) = delete;
+
+    static Cannonball& create(const sf::Vector2f& starting_pos, const sf::Vector2f& pdirection);
+
+    static void drawAll(sf::RenderTarget& target);
+    inline static void delInst(const std::vector<std::shared_ptr<Cannonball>>::iterator& it);
+
+    (...)
+};
+    \end{lstlisting}
+    Le constructeur, la copie et l'affection sont supprimés au profit
+    de la méthode de classe create, qui alloue un boulet, insère son smart pointer dans l'attribut
+    de classe all, et retourne l'instance crée.
+    Cela permet de gérer toutes les instances via les méthodes de classes :
+    \texttt{drawAll} et \texttt{delInst}
+\subsubsection{La méthode BareButton}
+Cette dernière méthode consiste en ce code:
+\begin{lstlisting}
+class BareButton: public sf::Drawable {
+public:
+    static std::vector<BareButton*> all;
+    static void checkAllClicks(const sf::Vector2f& mousePos);
+
+    BareButton();
+    virtual ~BareButton() { all.erase(std::find(all.begin(), all.end(), this)); }
+    BareButton(const sf::Vector2f& pos);
+    BareButton(const BareButton&) = delete;
+    BareButton& operator=(const BareButton&) = delete;
+};
+\end{lstlisting}
+Comme on peut le remarquer, BareButton possède un attribut de classe all
+qui stock tous les pointeurs des instances. Les pointeurs sont ajoutés à cet attribut dans les constructeurs.
+La copie et l'affection sont supprimées par précaution,
+pour éviter de se faire
+surprendre par d'éventuels soucis de pointeurs.
+
+\section {La répartition des tâches}
+Ce fut comme ceci :
+\begin{itemize}
+    \item \texttt{Éloïse} s'est occupée du fondement du projet c'est à dire
+    le fonctionnement des bateaux (bot et joueurs), obstacles, boulets de canons.
+    \item \texttt{Léo} s'est occupé de la structuration du projet (polymorphisme, gestion des instances, modularité)
+    et de l'interface (StartScreen, EndScreen, BareButton...).
+\end{itemize}
+
+\section {Retour d'experience sur le travail en groupe}
+La répartition des tâches pour ce projet fut complexe,
+étant donné le manque de temps dû aux autres projets et partiels à venir,
+il était compliqué de réaliser des idées poussées pouvant être
+codées séparément. Nous étions souvent ensemble lors de l'avancement du projet.
+
+\vfill
+\noindent\textbf{Références} :
+\begin{itemize}
+    \item Documentation C++ : \url{https://en.cppreference.com/}
+    \item Cours UE622 - Université de Toulon
+\end{itemize}
+
+\end{document}
